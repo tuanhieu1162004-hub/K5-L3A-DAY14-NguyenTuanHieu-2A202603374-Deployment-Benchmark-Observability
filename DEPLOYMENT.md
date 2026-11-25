@@ -34,3 +34,9 @@ unset AGENT_API_KEY
 ## Biến môi trường
 
 Service agent cần `REDIS_URL` tham chiếu đến biến cùng tên của service Redis, cùng `AGENT_API_KEY` và `ENVIRONMENT=production`. Giá trị khóa được đặt trong Railway.
+
+## Ảnh minh chứng
+
+- [Sơ đồ Railway](screenshots/dashboard.png) hiển thị agent và Redis đang Online.
+- [Deployment đang chạy](screenshots/running.png) hiển thị trạng thái Active và URL public.
+- [Kết quả kiểm thử](screenshots/test.png) hiển thị đủ bốn mã HTTP 200, 200, 401 và 200.
