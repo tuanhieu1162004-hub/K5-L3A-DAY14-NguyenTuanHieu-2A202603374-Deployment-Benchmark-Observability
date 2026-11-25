@@ -10,7 +10,13 @@ Trong production: lưu trong Redis/DB, không phải in-memory.
 """
 import time
 import logging
+import os
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from redis import Redis
+from redis.exceptions import WatchError
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -19,6 +25,36 @@ logger = logging.getLogger(__name__)
 # Giá token (tham khảo, thay đổi theo model)
 PRICE_PER_1K_INPUT_TOKENS = 0.00015   # GPT-4o-mini: $0.15/1M input
 PRICE_PER_1K_OUTPUT_TOKENS = 0.0006   # GPT-4o-mini: $0.60/1M output
+
+MONTHLY_BUDGET_USD = Decimal("10")
+MONTHLY_KEY_TTL_SECONDS = 32 * 24 * 60 * 60
+monthly_budget_store = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+
+
+def check_budget(user_id: str, estimated_cost: float) -> bool:
+    """Giữ trước chi phí ước tính nếu người dùng còn ngân sách tháng."""
+    cost = Decimal(str(estimated_cost))
+    if not cost.is_finite() or cost < 0:
+        raise ValueError("estimated_cost must be finite and non-negative")
+
+    with monthly_budget_store.pipeline() as transaction:
+        while True:
+            month = datetime.now(timezone.utc).strftime("%Y-%m")
+            key = f"budget:{user_id}:{month}"
+            try:
+                transaction.watch(key)
+                current = transaction.get(key)
+                total = Decimal(current.decode("ascii") if current else "0") + cost
+                if total > MONTHLY_BUDGET_USD:
+                    return False
+
+                transaction.multi()
+                transaction.set(key, str(total), ex=MONTHLY_KEY_TTL_SECONDS)
+                transaction.execute()
+                return True
+            except WatchError:
+                # Đọc lại số dư nếu một request khác vừa cập nhật ngân sách.
+                continue
 
 
 @dataclass
