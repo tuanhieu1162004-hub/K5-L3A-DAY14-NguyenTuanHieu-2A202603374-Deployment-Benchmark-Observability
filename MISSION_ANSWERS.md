@@ -88,7 +88,26 @@ Nginx nhận request từ máy host và chuyển tiếp đến `agent:8000` qua 
 
 ## Part 3 — Cloud Deployment
 
-Agent dùng cấu hình [Railway của Part 6](06-lab-complete/railway.toml). Còn chờ URL public và kết quả kiểm tra `/health`, `/ready` và `/ask` để điền vào `DEPLOYMENT.md`.
+Agent dùng cấu hình [Railway của Part 6](06-lab-complete/railway.toml). URL public và kết quả kiểm tra được ghi trong [DEPLOYMENT.md](DEPLOYMENT.md). `/health` và `/ready` đều trả 200 sau khi nối Redis. `/ask` thiếu key trả 401 và có key hợp lệ trả 200.
+
+### Exercise 3.2 — So sánh Railway và Render
+
+| Mục | Railway của Part 6 | Blueprint Render mẫu |
+|---|---|---|
+| Build và khởi động | `railway.toml` chọn builder `DOCKERFILE`. Dockerfile cài dependencies và khai báo lệnh chạy Uvicorn. | `render.yaml` khai báo service `type: web`, `runtime: python`, lệnh build và lệnh khởi động. |
+| Health check | `healthcheckPath = "/health"` | `healthCheckPath: /health` |
+| Redis và secrets | Tạo Redis trong project và tham chiếu `REDIS_URL` ở Variables của agent. | Blueprint khai báo service Redis. `sync: false` yêu cầu cấu hình giá trị trên dashboard, còn `generateValue: true` để nền tảng sinh giá trị. |
+
+[Cấu hình Railway](06-lab-complete/railway.toml) · [Blueprint Render mẫu](03-cloud-deployment/render/render.yaml)
+
+### Exercise 3.3 — Pipeline Cloud Run
+
+1. Cloud Build cài dependencies trong môi trường Python 3.11 và chạy `pytest`.
+2. Docker build image và gắn hai tag là commit SHA và `latest`.
+3. Pipeline push cả hai tag lên registry rồi dùng `gcloud run deploy` để triển khai image theo commit SHA.
+4. File `service.yaml` mô tả cấu hình service, gồm image, tài nguyên và giới hạn autoscaling. Lệnh deploy trong pipeline cũng khai báo biến môi trường và lấy secret từ Secret Manager.
+
+[Pipeline Cloud Build](03-cloud-deployment/production-cloud-run/cloudbuild.yaml) · [Cấu hình service](03-cloud-deployment/production-cloud-run/service.yaml)
 
 ## Part 4 — API Security
 
@@ -224,3 +243,5 @@ Docker build trong 28 giây. Image đo được 273 MB và container trả 200 �
 - Exercise 5.2: AI hướng dẫn cách thử SIGTERM trong container Linux. Người làm bài tự chạy và xác nhận mã 200 cùng log shutdown.
 - Exercise 5.3–5.5: AI đối chiếu cách lưu session và hướng dẫn chạy Compose. Người làm bài tự chạy stack, gọi health check và chạy script kiểm tra lịch sử qua ba instance.
 - Part 6: AI bổ sung cấu hình, health/readiness, log JSON, xác thực, rate limiting và cost guard dùng Redis, lifespan shutdown, Dockerfile, Compose và cấu hình Railway. AI chạy các phép thử trên workspace và hướng dẫn thiết lập Python 3.11 cùng quyền Docker trong Ubuntu WSL2. Người làm bài tự chạy script đầy đủ và xác nhận `PASS 12/12`.
+- Part 3: Người làm bài cấu hình Redis và domain trên Railway, rồi kiểm tra `/ask` với API key. AI kiểm tra các endpoint công khai và ghi lại bảng kết quả.
+- Part 7: AI chạy các phép đo local và eval, bổ sung hai mục kiến thức còn thiếu cho v2, sửa đường dẫn cài dependencies trong Dockerfile observability, rồi đối chiếu số liệu báo cáo với JSON và CSV Locust. Ảnh observability được chụp từ stack lab đang chạy.
